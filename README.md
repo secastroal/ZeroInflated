@@ -1,0 +1,2 @@
+# ZeroInflated
+Zero-Inflated IRT analysis of funtional somatic symptoms. Here, we used the zero inflated IRT model presented in Wall, Park, and Moustaki (2015) to analyze data of a questionnaire of functional somatic symptoms. The analyses were performed in Mplus, hence the input and output files of the models are available. Two ZI-IRT models were fitted, using two (sidi.out) and three (sidi_c3.out) classes. Moreover, the analyses were repeated but excluding 4 items: sidi19.out and sidi19_c3.out.  
