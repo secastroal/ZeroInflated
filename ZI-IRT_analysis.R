@@ -1,5 +1,6 @@
-# This script aims to analyze data from the the sidi scale to measure medically
-# unexplained symptoms through a zero-inflated IRT model (see Wall, Park, & Moustaki, 2015).
+# This script aims to analyze data from the the Composite International Diagnostic 
+# Interview (CIDI) scale to measure medically unexplained symptoms through a 
+# zero-inflated IRT model (see Wall, Park, & Moustaki, 2015).
 
 
 # Prepare Enviroment ----
@@ -8,19 +9,19 @@ library(MplusAutomation)
 # Read data and export data to Mplus ----
 
 load("Data.analysis.RData")
-sidi <- Data.analysis
+cidi <- Data.analysis
 
 # Exclude unnecessary variables.
-sidi <- sidi[, c(1, 2, 28, grep("rec", names(sidi)))]
-sidi$AgeCat <- as.numeric(sidi$AgeCat)
+cidi <- cidi[, c(1, 2, 28, grep("rec", names(cidi)))]
+cidi$AgeCat <- as.numeric(cidi$AgeCat)
 
 # Checking how many persons responded 0 to all items. 
-items <- sidi[, -(1:3)]
+items <- cidi[, -(1:3)]
 itemsZI <- items[apply(items, 1, sum) != 0, ]
 summary(apply(itemsZI, 2, mean))
 
 # Export data to Mplus. 
-prepareMplusData(as.data.frame(as.matrix(sidi)), "sidi.dat", inpfile = FALSE)
+prepareMplusData(as.data.frame(as.matrix(cidi)), "cidi.dat", inpfile = FALSE)
 
 # Due to software availability, I fitted the model in peregrine: The high performance
 # cluster computer of the univerisity of Groningen.
@@ -35,7 +36,7 @@ prepareMplusData(as.data.frame(as.matrix(sidi)), "sidi.dat", inpfile = FALSE)
 # not be updated to handle mixture models. Therefore, I simply read the output
 # with readLines.
 
-fit_23 <- readLines("sidi.out", skipNul = TRUE)
+fit_23 <- readLines("cidi.out", skipNul = TRUE)
 # Exclude empty lines.
 fit_23 <- fit_23[-which(fit_23 == fit_23[4])]
 # Only Select the lines where the parameters are.
@@ -80,7 +81,7 @@ axis(1, 1:I, labels = alpha[, 1], cex.axis = 0.5, las = 2)
 # Clearly, this shows the worst items are C18, C27, c37, and C39.
 # We repeated the analysis excluding these items.
 
-fit_19 <- readLines("sidi19.out", skipNul = TRUE)
+fit_19 <- readLines("cidi19.out", skipNul = TRUE)
 # Exclude empty lines.
 fit_19 <- fit_19[-which(fit_19 == fit_19[4])]
 # Only Select the lines where the parameters are.
