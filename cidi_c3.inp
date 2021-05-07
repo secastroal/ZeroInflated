@@ -1,0 +1,102 @@
+TITLE: Zero Inflated IRT model with 3 latent classes: A zero inflated class
+(non-pathological) and pathological group. 
+
+DATA: FILE = "cidi.dat";
+VARIABLE: 
+NAMES = PK SEX AgeCat C1rec C2rec C3rec C4rec C5rec C6rec C11rec C17rec C18rec
+     C19rec C20rec C22rec C24rec C25Arec C27rec C29rec C34rec C35rec C36rec C37rec
+     C39rec C40rec C41rec; 
+MISSING=.;
+USEVARIABLES = C1rec C2rec C3rec C4rec C5rec C6rec C11rec C17rec C18rec
+     C19rec C20rec C22rec C24rec C25Arec C27rec C29rec C34rec C35rec 
+     C36rec C37rec C39rec C40rec C41rec;
+! By defining the variables as categorical, Mplus estimates an IRT model.
+! Depending ont he estimation method it will be a probit or a logit 2pl.
+! Bayes and WLS is probit, ML is logit. 
+CATEGORICAL = C1rec C2rec C3rec C4rec C5rec C6rec C11rec C17rec C18rec
+     C19rec C20rec C22rec C24rec C25Arec C27rec C29rec C34rec C35rec 
+     C36rec C37rec C39rec C40rec C41rec;
+CLASSES = c(3);
+
+ANALYSIS:
+ESTIMATOR = MLR;
+TYPE = MIXTURE; 
+ALGORITHM = INTEGRATION;
+! ODLL is needed because of the model constraint command.
+ALGORITHM = ODLL;
+STARTS = 400 40; ! Number of random sets of starting values.
+STSEED = 2020; ! Seed to generate the random sets of starting values.
+!PROCESSORS = 8 4; ! Processors for parallel computing.
+
+MODEL: 
+%OVERALL%
+! Create latent continuous variable theta (Severity of symptoms)
+theta BY C1rec* C2rec C3rec C4rec C5rec C6rec C11rec C17rec (alpha1-alpha8) 
+     C18rec C19rec C20rec C22rec C24rec C25Arec C27rec (alpha9-alpha15)
+     C29rec C34rec C35rec C36rec C37rec C39rec C40rec (alpha16-alpha22)
+     C41rec (alpha23);
+[C1rec$1* C2rec$1 C3rec$1 C4rec$1 C5rec$1 C6rec$1 C11rec$1] (tau1-tau7); 
+[C17rec$1 C18rec$1 C19rec$1 C20rec$1 C22rec$1 C24rec$1] (tau8-tau13);
+[C25Arec$1 C27rec$1 C29rec$1 C34rec$1 C35rec$1 C36rec$1] (tau14-tau19);
+[C37rec$1 C39rec$1 C40rec$1 C41rec$1] (tau20-tau23); 
+
+! Give name(s) to the logit of the class probabilities for use in model constraint.
+[c#1] (logitp1);
+[c#2] (logitp2);
+
+%c#1% ! First class: zero inflated non-pathological group.
+! Fix variance of the latent trait to be zero.
+theta@0;
+! Fix mean of the latent trait to be -100.
+[theta@-100];
+
+! Fix discrimination and severity parameters so they are not estimated
+! for the non-pathological group.
+theta BY C1rec@1 C2rec@1 C3rec@1 C4rec@1 C5rec@1 C6rec@1 C11rec@1 C17rec@1 
+         C18rec@1 C19rec@1 C20rec@1 C22rec@1 C24rec@1 C25Arec@1 C27rec@1 
+         C29rec@1 C34rec@1 C35rec@1 C36rec@1 C37rec@1 C39rec@1 C40rec@1 
+         C41rec@1;
+[C1rec$1@1 C2rec$1@1 C3rec$1@1 C4rec$1@1 C5rec$1@1 C6rec$1@1 
+     C11rec$1@1 C17rec$1@1 C18rec$1@1 C19rec$1@1 C20rec$1@1 
+     C22rec$1@1 C24rec$1@1 C25Arec$1@1 C27rec$1@1 C29rec$1@1 
+     C34rec$1@1 C35rec$1@1 C36rec$1@1 C37rec$1@1 C39rec$1@1 
+     C40rec$1@1 C41rec$1@1];
+
+! Use a mixture of normals to approximate the latent trait.
+! If multiple pathological classes are used, constrain the variance across 
+! classes but allow means to differ.
+%c#2% ! Second class: pathological group 1.
+theta* (phi);
+[theta*] (m2);
+
+%c#3% ! Third class: pathological group 2.
+theta* (phi);
+[theta*] (m3);
+
+! Compute new parameters and reparameterize severity parameters.
+MODEL CONSTRAINT:
+NEW(pi1, pi2, pi3, beta1-beta23);
+
+! Backtransform to the probability scale for class probabilities
+pi1 = exp(logitp1)/(1 + exp(logitp1) + exp(logitp2));
+pi2 = exp(logitp2)/(1 + exp(logitp1) + exp(logitp2));
+pi3 = 1 - pi1 - pi2;
+
+!for identification fix marginal mean and variance of the latent trait
+!across the non-zero components to be 0 and 1, respectively.
+!marginal mean = 0 = (pi2*m2 + pi3*m3)/(pi2+pi3);
+!marginal variance = 1 = (pi2/(pi2+pi3))*(phi + m2*m2) +
+! (pi3/(pi2+pi3))*(phi + m3*m3) – (marginal mean)^2;
+!These constraints reduce to the following:
+m2 = -exp(-logitp2)*m3;
+phi = 1 - (pi2/(pi2+pi3))*(m2*m2) - (pi3/(pi2+pi3))*(m3*m3);
+
+! Mplus parameterizes logit(Prob) = -tau + alpha*theta, so need to scale
+! intercepts tau by alpha to get severities beta
+DO(1, 23) beta# = tau#/alpha#;
+
+OUTPUT: TECH8;
+
+PLOT:
+TYPE IS PLOT2;
+
